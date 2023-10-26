@@ -1,1 +1,415 @@
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+----------------------------------------------------------------------
+ENTITY parqueadero IS
+	PORT(	rst	:	IN		STD_LOGIC;
+			clk	:	IN		STD_LOGIC;
+			se		:	IN		STD_LOGIC;
+			ss		:	IN		STD_LOGIC;
+			
+			empty			:	OUT	STD_LOGIC;
+			full			:	OUT	STD_LOGIC;
+			car_enter	:	OUT	STD_LOGIC;
+			car_exit		:	OUT	STD_LOGIC;
+			remainf		:	OUT	STD_LOGIC_VECTOR(6 DOWNTO 0));
+			
+			
+END ENTITY;
+-----------------------------------------------------------------------			
+ARCHITECTURE fsm OF parqueadero IS
+	TYPE state IS (sempty, s1, s2, s3, s4, s5, s6, s7, s8, sfull);
+	SIGNAL pr_state, nx_state: state;
+	TYPE stateinput IS (z0, z1e, z2e, z3e, z4e, z1s, z2s, z3s, z4s);
+	SIGNAL pr_stateinput, nx_stateinput: stateinput;
+	SIGNAL input : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL sess  : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL remain: STD_LOGIC_VECTOR(3 DOWNTO 0);
+	
+	SIGNAL max_tick  	: STD_LOGIC;
+	SIGNAL max_tick1  : STD_LOGIC;
+	SIGNAL enterena  	: STD_LOGIC;
+	SIGNAL exitena  	: STD_LOGIC;
+-------------------------------------------------------------------------	
+BEGIN
+	
+	
+	--código tras oprimir reset, reiniciar estados
+	PROCESS(rst, clk)
+	BEGIN
+		IF (rst='1') THEN
+			pr_state <= sempty;
+			pr_stateinput <= z0;
+		ELSIF (rising_edge(clk)) THEN
+			pr_state <= nx_state;
+			pr_stateinput <= nx_stateinput;
+		END IF;
+	END PROCESS;
+	
+------------------------------------------------------------------------------
+-- concatenación de la señal de que un auto entró con la de un auto salió
+sess <= se & ss;
+--Lógica para prender los leds durante 2 segundos tras que un auto entre o salga
+car_enter <= enterena AND (NOT max_tick);
+car_exit	 <= exitena	 AND (NOT max_tick1);
+--máquina de estados finitos detector de secuencias
+PROCESS(se, ss, rst, clk)
+	BEGIN
+		CASE pr_stateinput IS 
+			WHEN z0	=>
+				exitena <= '0';
+				enterena <= '0';
+				IF(sess = "10")THEN
+				input <= "00";
+				nx_stateinput <= z1e;
+				
+				ELSIF (sess = "01") THEN
+				input <= "00";
+				nx_stateinput <= z1s;
+				
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z0;
+				END IF;
+				
+			WHEN z1e	=>
+				
+				IF(sess = "11")THEN
+				input <= "00";
+				nx_stateinput <= z2e;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z1e;
+				END IF;
+				
+			WHEN z2e	=>
+				IF(sess = "01")THEN
+				input <= "00";
+				nx_stateinput <= z3e;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z2e;
+				END IF;
+				
+			WHEN z3e	=>
+				IF(sess = "00")THEN
+				input <= "00";
+				nx_stateinput <= z4e;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z3e;
+				END IF;
+				
+			WHEN z4e	=>
+				
+			
+				IF(sess = "00")THEN
+				input <= "10";
+				nx_stateinput <= z0;
+				enterena <= '1';
+				ELSIF(sess = "01")THEN
+				nx_stateinput <= z1s;
+				input <= "10";
+				ELSE
+				input <= "10";
+				nx_stateinput <= z1e;
+				END IF;
+				
+				
+			WHEN z1s	=>
+				
+				IF(sess = "11")THEN
+				input <= "00";
+				nx_stateinput <= z2s;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z1s;
+				END IF;
+				
+			WHEN z2s	=>
+				IF(sess = "10")THEN
+				input <= "00";
+				nx_stateinput <= z3s;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z2s;
+				END IF;
+				
+			WHEN z3s	=>
+				IF(sess = "00")THEN
+				input <= "00";
+				nx_stateinput <= z4s;
+				ELSE 
+				input <= "00";
+				nx_stateinput <= z3s;
+				END IF;
+				
+			WHEN z4s	=>
+				IF(sess = "00")THEN
+				input <= "01";
+				nx_stateinput <= z0;
+				exitena <= '1';
+				ELSIF(sess = "01")THEN
+				nx_stateinput <= z1s;
+				input <= "01";
+				
+				ELSE
+				input <= "01";
+				nx_stateinput <= z1e;
+				END IF;
+				
+	END CASE;
+END PROCESS;
+	
 
+-------------------------------------------------------------------------------
+--máquina de estados finitos para los espacios del parqueadero
+	PROCESS(rst, clk)
+	BEGIN
+		CASE pr_state IS 
+			WHEN sempty	=>
+				IF(input = "10")THEN
+				remain 	<= "1001";
+				empty 	<= '1';
+				full 		<= '0';
+				nx_state <= s1;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "1001";
+				empty 	<= '1';
+				full 		<= '0';
+				nx_state <= sempty;
+				
+				ELSE 
+				remain 	<= "1001";
+				empty 	<= '1';
+				full 		<= '0';
+				nx_state <= sempty;
+				
+				END IF;
+				
+			WHEN s1	=>
+				IF(input = "10")THEN
+				remain 	<= "1000";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s2;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "1000";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= sempty;
+				
+				ELSE 
+				remain 	<= "1000";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s1;
+				END IF;
+				
+			WHEN s2	=>
+				IF(input = "10")THEN
+				remain 	<= "0111";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s3;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0111";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s1;
+				
+				ELSE 
+				remain 	<= "0111";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s2;
+				END IF;
+				
+			WHEN s3	=>
+				IF(input = "10")THEN
+				remain 	<= "0110";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s4;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0110";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s2;
+				
+				ELSE 
+				remain 	<= "0110";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s3;
+				END IF;
+				
+			WHEN s4	=>
+				IF(input = "10")THEN
+				remain 	<= "0101";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s5;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0101";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s3;
+				
+				ELSE 
+				remain 	<= "0101";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s4;
+				END IF;
+				
+			WHEN s5	=>
+				IF(input = "10")THEN
+				remain 	<= "0100";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s6;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0100";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s4;
+				
+				ELSE 
+				remain 	<= "0100";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s5;
+				END IF;
+				
+			WHEN s6	=>
+				IF(input = "10")THEN
+				remain 	<= "0011";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s7;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0011";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s5;
+				
+				ELSE 
+				remain 	<= "0011";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s6;
+				END IF;
+				
+			WHEN s7	=>
+				IF(input = "10")THEN
+				remain 	<= "0010";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s8;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0010";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s6;
+				
+				ELSE 
+				remain 	<= "0010";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s7;
+				END IF;
+				
+			WHEN s8	=>
+				IF(input = "10")THEN
+				remain 	<= "0001";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= sfull;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0001";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s7;
+				
+				ELSE 
+				remain 	<= "0001";
+				empty 	<= '0';
+				full 		<= '0';
+				nx_state <= s8;
+				END IF;
+				
+			WHEN sfull	=>
+				IF(input = "10")THEN
+				remain 	<= "0000";
+				empty 	<= '0';
+				full 		<= '1';
+				nx_state <= sfull;
+				
+				ELSIF (input = "01") THEN
+				remain 	<= "0000";
+				empty 	<= '0';
+				full 		<= '1';
+				nx_state <= s8;
+				
+				ELSE 
+				remain 	<= "0000";
+				empty 	<= '0';
+				full 		<= '1';
+				nx_state <= sfull;
+				END IF;
+			
+			
+				
+				
+		END CASE;
+	END PROCESS;
+	----------------------------------------------------------------
+	--proceso de pasar la salida de los parqueaderos sobrantes a 7 segmentos
+	bintossseg: ENTITY work.bin_to_ssegpar
+		PORT MAP		(	bin			=>	remain,
+							sseg			=>	remainf);
+----------------------------------------------------------------------	
+--contadores de 2 segundos para los leds de entrada y salida						
+		TIMERenter: ENTITY WORK.univ_bin_counterp
+		GENERIC MAP(N => 27)
+		PORT MAP(
+					clk 				=> clk,
+					rst				=> rst,
+					ena 				=> enterena,
+					syn_clr			=> '0',
+					load 				=>	'0',
+					up 				=> '1',
+					d 					=> "0000",
+					max				=> "101111101011110000100000000",
+					max_tick 		=> max_tick
+					
+					); 
+					
+		TIMERexit: ENTITY WORK.univ_bin_counterp
+		GENERIC MAP(N => 27)
+		PORT MAP(
+					clk 				=> clk,
+					rst				=> rst,
+					ena 				=> exitena,
+					syn_clr			=> '0',
+					load 				=>	'0',
+					up 				=> '1',
+					d 					=> "0000",
+					max				=> "101111101011110000100000000",
+					max_tick 		=> max_tick1
+					
+					); 	
+	
+			
+	
+---------------------------------------------------------------------							
+END ARCHITECTURE fsm;	
